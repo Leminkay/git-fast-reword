@@ -13,9 +13,23 @@ def parse_line(inString):
     line = line.split(' ')
     if line[6] == "merge":
         line[8] = " ".join(line[8::])
+        del line[9:]
     else:
         line[7] = " ".join(line[7::])
+        del line[8:]
+    if line[6] == "commit(initial):":
+        line[6] = "commit (initial):"
     return line
+
+def parsed_to_string(line):
+    str = ''
+    for i in range(5):
+        str = str + line[i] + ' '
+    str = str + line[5]
+    str = str + '\t'
+    for i in range(6, len(line)):
+        str = str + line[i] + ' '
+    return str[0:-1]
 
 
 def decompress(path):
@@ -76,10 +90,16 @@ def make_new_file( commit, parents, author, committer, message):  # could replac
     return hash
 
 
+def remove_file(hash):
+    path = homeDir + "object/" + hash[0:2] + "/" + hash[2:]
+    os.remove(path)
+
+
 def modify_file_message(hash, newMessage):
-    path = homeDir + "object/" + hash[0:2] + "/" + hash[3::]
+    path = homeDir + "object/" + hash[0:2] + "/" + hash[2:]
     commit, parents, author, committer, message = parse_commit(path)
     commDict[hash] = make_new_file(commit, parents, author, committer, newMessage)
+    remove_file(hash)
 
 
 def modify_file_parent(hash):
@@ -95,23 +115,63 @@ def modify_file_parent(hash):
 
 
 logHEAD = homeDir + "logs/HEAD"
+logTemp = homeDir + "logs/temp"
 # inHash = sys.argv[1]
 # newMes = sys.argv[2]
 newMes = " "
 inHash = " "
 # print(inHash)
-f = open(logHEAD, 'r')
-#lineNum = 0
 #print(parse_commit(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
 #commit, parents, author, committer, message = (parse_commit(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
 
 #print(make_new_file(commit, parents, author, committer, message))
 
 #print(make_new_file(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
-#for line in f.readlines():
-#    line = parse_line(line)
-#    if line[1] == inHash:
-#        modify_file_message(inHash, newMes)
-#    if line[0] in commDict.values():
-#        modify_file_parent(line[0])
-#
+
+log = open(logHEAD, 'r')
+newlog = open(logTemp, 'w')
+lineNum = 0
+
+Ended = False
+# /logs/head
+for _line in log.readlines():
+
+    line = parse_line(_line)
+
+    if line[1] == inHash and not (line[1] in commDict):
+        if newMes == line[-1][:-1]:
+            print("nothing to modify")
+            Ended = True
+            break
+        line[1] = modify_file_message(inHash, newMes)
+        line[-1] = newMes + '\n'
+
+    if line[0] in commDict:
+        line[1] = modify_file_parent(line[1])
+        line[0] = commDict[line[0]]
+
+    newlog.write(parsed_to_string(line))
+newlog.close()
+log.close()
+
+if not Ended:
+    os.remove(logHEAD)
+    os.rename(logTemp, logHEAD)
+
+# change orig_head if needed
+with open(homeDir + "ORIG_HEAD") as f:
+    if f.read() in commDict:
+        g = open(homeDir + "temp", 'w')
+        g.write(commDict[f.read()])
+        g.close()
+        os.remove(homeDir + "ORIG_HEAD")
+        os.rename(homeDir + "temp", homeDir + "ORIG_HEAD")
+
+for ref in os.listdir(homeDir + "refs/heads/"):
+   with open(homeDir + "refs/heads/" + ref) as f:
+       if f.read() in commDict:
+           g = open(homeDir + "refs/heads/" + "temp", 'w')
+           g.write(commDict[f.read()])
+           g.close()
+           os.remove(homeDir + "refs/heads/" + ref)
+           os.rename(homeDir + "refs/heads/" + "temp", homeDir + "refs/heads/" + ref)
