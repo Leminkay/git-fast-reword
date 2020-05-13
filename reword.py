@@ -1,6 +1,8 @@
 import os
 import sys
 import hashlib
+import zlib
+
 
 homeDir = "/home/kal/jet/"
 commDict = {}
@@ -16,58 +18,69 @@ def parse_line(inString):
     return line
 
 
-def parse_commit(file_name):
-    commit = []
+def decompress(path):
+    file = open(path, 'rb')
+    fileData = zlib.decompress(file.read()).decode('utf-8')
+    return fileData # returns string
+
+
+def compress(fileData):
+    return zlib.compress(fileData.encode('utf-8')) # return bytes of compressed data
+
+
+def parse_commit(fileData):
+    fileData = fileData.split('\n')
+    commit = ''
     parents = []
     author = ''
-    committer = []
+    committer = ''
     message = ''
-    for _l in f.readlines():
+    for _l in fileData:
         line = _l.split(' ')
         if line[0] == "commit":
-            commit.append(line[1])
-            commit.append(line[2])
+            commit = _l[6::]
         if line[0] == "parent":
             parents.append(line[1])
         if line[0] == "author":
             author = _l[6::]
         if line[0] == "committer":
-            author = _l[6::]
+            committer = _l[9::]
             break
-    message = f.readlines()[-1]
+    message = fileData[-2]
     return commit, parents, author, committer, message
 
 
-def hash_file(file_name):
-    BLOCK_SIZE = 65536
-    hash = hashlib.sha1()  # Create the hash object, can use something other than `.sha256()` if you wish
-    with open(file_name, 'rb') as f:  # Open the file to read it's bytes
-        fb = f.read(BLOCK_SIZE)  # Read from the file. Take in the amount declared above
-        while len(fb) > 0:  # While there is still data being read from the file
-            hash.update(fb)  # Update the hash
-            fb = f.read(BLOCK_SIZE)
-    return hash.hexdigest()
+def hash_string(fileData):
+    return hashlib.sha1(fileData.encode('utf-8')).hexdigest()
 
 
-def make_new_file(file, commit, parents, author, committer, message):  # could replace with commit class
-    f = open("temp", "w")
-    f.write("commit " + commit)
+def make_new_file( commit, parents, author, committer, message):  # could replace with commit class
+    fileData = ''
+    fileData = fileData + "commit " + commit + "\n"
     for p in parents:
-        f.write("parent " + p)
-    f.write("author " + author)
-    f.write("committer " + committer)
-    f.write("\n")
-    f.write(message)
-    f.close()
-    hash = hash_file(homeDir + file)
-    os.rename(homeDir + file, homeDir + "object/" + hash[0:2] + "/" + hash[3::])
+        fileData = fileData + "parent " + p + "\n"
+    fileData = fileData + "author " + author + "\n"
+    fileData = fileData + "committer " + committer + "\n"
+    fileData = fileData + "\n"
+    fileData = fileData + message +"\n"
+    fileData = fileData +"\n"
+    hash = hash_string(fileData) + "1"
+
+    pathHash = homeDir + "object/" + hash[0:2] + "/" + hash[2:]
+
+    if not os.path.exists(os.path.dirname(pathHash)):
+        os.makedirs(os.path.dirname(pathHash))
+
+    with open(pathHash, "wb") as f:
+        f.write(compress(fileData))
+
     return hash
 
 
 def modify_file_message(hash, newMessage):
     path = homeDir + "object/" + hash[0:2] + "/" + hash[3::]
     commit, parents, author, committer, message = parse_commit(path)
-    commDict[hash] = make_new_file(path, commit, parents, author, committer, newMessage)
+    commDict[hash] = make_new_file(commit, parents, author, committer, newMessage)
 
 
 def modify_file_parent(hash):
@@ -79,7 +92,7 @@ def modify_file_parent(hash):
             parents[i] = commDict[parents[i]]
             changed = True
     if changed:
-        commDict[hash] = make_new_file(path, commit, parents, author, committer, message)
+        commDict[hash] = make_new_file(commit, parents, author, committer, message)
 
 
 logHEAD = homeDir + ".git/logs/HEAD"
@@ -90,9 +103,16 @@ inHash = " "
 # print(inHash)
 f = open(logHEAD, 'r')
 lineNum = 0
-for line in f.readlines():
-    line = parse_line(line)
-    if line[1] == inHash:
-        modify_file_message(inHash, newMes)
-    if line[0] in commDict.values():
-        modify_file_parent(line[0])
+print(parse_commit(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
+commit, parents, author, committer, message = (parse_commit(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
+
+print(make_new_file(commit, parents, author, committer, message))
+
+#print(make_new_file(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
+#for line in f.readlines():
+#    line = parse_line(line)
+#    if line[1] == inHash:
+#        modify_file_message(inHash, newMes)
+#    if line[0] in commDict.values():
+#        modify_file_parent(line[0])
+#
