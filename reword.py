@@ -4,7 +4,7 @@ import hashlib
 import zlib
 
 
-homeDir = "/home/kal/jet/"
+homeDir = "/home/kal/jet/.git/"
 commDict = {}
 
 
@@ -38,13 +38,13 @@ def parse_commit(fileData):
     for _l in fileData:
         line = _l.split(' ')
         if line[0] == "commit":
-            commit = _l[6::]
+            commit = _l[7::]
         if line[0] == "parent":
             parents.append(line[1])
         if line[0] == "author":
-            author = _l[6::]
+            author = _l[7::]
         if line[0] == "committer":
-            committer = _l[9::]
+            committer = _l[10::]
             break
     message = fileData[-2]
     return commit, parents, author, committer, message
@@ -63,8 +63,7 @@ def make_new_file( commit, parents, author, committer, message):  # could replac
     fileData = fileData + "committer " + committer + "\n"
     fileData = fileData + "\n"
     fileData = fileData + message +"\n"
-    fileData = fileData +"\n"
-    hash = hash_string(fileData) + "1"
+    hash = hash_string(fileData)
 
     pathHash = homeDir + "object/" + hash[0:2] + "/" + hash[2:]
 
@@ -95,18 +94,18 @@ def modify_file_parent(hash):
         commDict[hash] = make_new_file(commit, parents, author, committer, message)
 
 
-logHEAD = homeDir + ".git/logs/HEAD"
+logHEAD = homeDir + "logs/HEAD"
 # inHash = sys.argv[1]
 # newMes = sys.argv[2]
 newMes = " "
 inHash = " "
 # print(inHash)
 f = open(logHEAD, 'r')
-lineNum = 0
-print(parse_commit(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
-commit, parents, author, committer, message = (parse_commit(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
+#lineNum = 0
+#print(parse_commit(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
+#commit, parents, author, committer, message = (parse_commit(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
 
-print(make_new_file(commit, parents, author, committer, message))
+#print(make_new_file(commit, parents, author, committer, message))
 
 #print(make_new_file(decompress("/home/kal/jet/.git/objects/1b/24e58ce94a37cea752c0a83e64c238d0d6b772")))
 #for line in f.readlines():
