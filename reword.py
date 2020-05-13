@@ -109,7 +109,7 @@ def modify_file_message(hash, newMessage):
 
     #changind length of data in commit message
     delta = len(message) - len(newMessage)
-    print(commit[0:3])
+
     newLength = int(commit[0:3]) - delta
     commit = str(newLength) + commit[3:]
 
@@ -148,7 +148,7 @@ Ended = False
 for _line in log.readlines():
 
     line = parse_line(_line)
-    print(line)
+
     if line[1] == inHash and not (line[1] in commDict):
         if newMes == line[-1][:-1]:
             print("nothing to modify")
@@ -164,7 +164,7 @@ for _line in log.readlines():
         line[0] = commDict[line[0]]
     if line[1] in commDict:
         line[1] = commDict[line[1]]
-    print(line)
+
     newlog.write(parsed_to_string(line))
 newlog.close()
 log.close()
